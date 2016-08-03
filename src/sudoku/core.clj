@@ -18,31 +18,31 @@
 (defn row-of
   "Return row index based on piece index"
   ([index]
-   (row-of index 81))
+   (row-of index (count puzzle)))
   ([index max-pos]
    (quot index (row-size-m max-pos))))
 
 (defn col-of
   "Return column index based on piece index"
   ([index]
-   (col-of index 81))
+   (col-of index (count puzzle)))
   ([index max-pos]
    (rem index (row-size-m max-pos))))
 
 (defn square-of
   "Return square index based on piece index"
   ([index]
-   (square-of index 81))
+   (square-of index (count puzzle)))
   ([index max-pos]
    (def row (row-of index max-pos))
    (def col (col-of index max-pos))
    (def group (group-size-m max-pos))
-   (+ (* 3 (quot row group)) (quot col group))))
+   (+ (* group (quot row group)) (quot col group))))
 
 (defn row-ind
   "Seq of indices that are in given row"
   ([r]
-   (row-ind r 81))
+   (row-ind r (count puzzle)))
   ([r max-pos]
    (def rows (row-size-m max-pos))
    (def start (* r rows))
@@ -51,7 +51,7 @@
 (defn col-ind
   "Seq of indices that are in given column"
   ([c]
-   (col-ind c 81))
+   (col-ind c (count puzzle)))
   ([c max-pos]
    (def cols (row-size-m max-pos))
    (range c max-pos cols)))
@@ -59,7 +59,7 @@
 (defn square-ind
   "Seq of indices that are in a given square"
   ([s]
-   (square-ind s 81))
+   (square-ind s (count puzzle)))
   ([s max-pos]
    (def rows (row-size-m max-pos))
    (def grouping (group-size-m max-pos))
@@ -77,7 +77,7 @@
 (defn neighbors-ind
   "Generate indices of neighbors given piece index"
   ([index]
-   (neighbors-ind index 81))
+   (neighbors-ind index (count puzzle)))
   ([index max-pos]
    (except index (sort (set (reduce into [(row-ind (row-of index max-pos) max-pos)
                                           (col-ind (col-of index max-pos) max-pos)
@@ -102,25 +102,25 @@
 (defn row-neighbors
   "Get values from neighboring cells"
   ([puzzle index]
-   (row-neighbors puzzle index 81))
+   (row-neighbors puzzle index (count puzzle)))
   ([puzzle index max-pos]
    (get-neighbors row-of row-ind puzzle index max-pos)))
 
 (defn col-neighbors
   ([puzzle index]
-   (col-neighbors puzzle index 81))
+   (col-neighbors puzzle index (count puzzle)))
   ([puzzle index max-pos]
    (get-neighbors col-of col-ind puzzle index max-pos)))
 
 (defn square-neighbors
   ([puzzle index]
-   (square-neighbors puzzle index 81))
+   (square-neighbors puzzle index (count puzzle)))
   ([puzzle index max-pos]
    (get-neighbors square-of square-ind puzzle index max-pos)))
 
 (defn neighbors
   ([puzzle index]
-   (neighbors puzzle index 81))
+   (neighbors puzzle index (count puzzle)))
   ([puzzle index max-pos]
    (puzzle-pieces puzzle (neighbors-ind index max-pos))))
 
@@ -136,7 +136,7 @@
 
 (defn choices
   ([puzzle index]
-   (choices puzzle index 81))
+   (choices puzzle index (count puzzle)))
   ([puzzle index max-pos]
    (clojure.set/difference (all-choices max-pos) (set (neighbors puzzle index max-pos)))))
 
@@ -163,6 +163,24 @@
   (and (not (= 0 value)) 
        (not (contains? (unique-values (neighbors puzzle index)) value))))
 
+(defn finished?
+  "Check if all squares have been filled"
+  [puzzle]
+  (not (some #(= 0 %) puzzle)))
+
+(defn step
+  [puzzle]
+  (if (finished? puzzle)
+    puzzle
+    (first (new-puzzles-from-choices puzzle (first (candidate-pieces puzzle))))))
+
+(defn solve
+  "Simple solver without backtracking"
+  [puzzle]
+  (if (finished? puzzle)
+    puzzle
+    (recur (step puzzle))))
+
 (defn read-puzzle
   "Transform text puzzle into an seq on integers"
   [puzzle-string]
@@ -181,8 +199,8 @@
 
 (defn puzzle-to-print-string
   [puzzle]
-  (def rows (partition (row-size puzzle) puzzle))
-  (def row-groups (partition (group-size puzzle) rows))
+  (def rows (partition (row-size-m (count puzzle)) puzzle))
+  (def row-groups (partition (group-size-m (count puzzle)) rows))
   (string/replace (string/join "\n" (flatten (map row-group-to-string row-groups))) #"0" "*"))
 
 (defn print-puzzle
@@ -193,4 +211,11 @@
   [puzzle]
   (string/join "" puzzle))
 
-(def puzzle "100030009020640080003200740200000000014000000000062800007000300080450020000000001")
+(def puzzle-string-81 "100030009020640080003200740200000000014000000000062800007000300080450020000000001")
+(def puzzle-string-16 "1234342121430000")
+
+(def puzzle (read-puzzle puzzle-string-16))
+(println "Initial:")
+(print-puzzle puzzle)
+(println "\nFinal:")
+(print-puzzle (solve puzzle))
