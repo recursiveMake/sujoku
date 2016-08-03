@@ -3,39 +3,31 @@
             [clojure.string :as string])
   (:gen-class))
 
-(defn to-position
-  [index]
-  (inc index))
-
-(defn to-index
-  [position]
-  (dec position))
-
 (defn row-size
   "Size of rows in puzzle"
-  [puzzle]
-  (math/sqrt (count puzzle)))
+  [puzzle-count]
+  (math/sqrt puzzle-count))
+(def row-size-m (memoize row-size))
 
 (defn group-size
   "Size of groups in puzzle"
-  [puzzle]
-  (math/sqrt (row-size puzzle)))
+  [puzzle-count]
+  (math/sqrt (row-size puzzle-count)))
+(def group-size-m (memoize group-size))
 
 (defn row-of
   "Return row index based on piece index"
   ([index]
    (row-of index 81))
   ([index max-pos]
-   (def pieces-per-row (math/sqrt max-pos))
-   (quot index pieces-per-row)))
+   (quot index (row-size-m max-pos))))
 
 (defn col-of
   "Return column index based on piece index"
   ([index]
    (col-of index 81))
   ([index max-pos]
-   (def pieces-per-column (math/sqrt max-pos))
-   (rem index pieces-per-column)))
+   (rem index (row-size-m max-pos))))
 
 (defn square-of
   "Return square index based on piece index"
@@ -44,7 +36,7 @@
   ([index max-pos]
    (def row (row-of index max-pos))
    (def col (col-of index max-pos))
-   (def group (math/sqrt (math/sqrt max-pos)))
+   (def group (group-size-m max-pos))
    (+ (* 3 (quot row group)) (quot col group))))
 
 (defn row-ind
@@ -52,7 +44,7 @@
   ([r]
    (row-ind r 81))
   ([r max-pos]
-   (def rows (math/sqrt max-pos))
+   (def rows (row-size-m max-pos))
    (def start (* r rows))
    (range start (+ start rows))))
 
@@ -61,7 +53,7 @@
   ([c]
    (col-ind c 81))
   ([c max-pos]
-   (def cols (math/sqrt max-pos))
+   (def cols (row-size-m max-pos))
    (range c max-pos cols)))
 
 (defn square-ind
@@ -69,8 +61,8 @@
   ([s]
    (square-ind s 81))
   ([s max-pos]
-   (def rows (math/sqrt max-pos))
-   (def grouping (math/sqrt rows))
+   (def rows (row-size-m max-pos))
+   (def grouping (group-size-m max-pos))
    (def r (quot s grouping))
    (def c (rem s grouping))
    (def start (+ (* rows grouping r) (* c grouping)))
@@ -88,8 +80,8 @@
    (neighbors-ind index 81))
   ([index max-pos]
    (except index (sort (set (reduce into [(row-ind (row-of index max-pos) max-pos)
-                                                 (col-ind (col-of index max-pos) max-pos)
-                                                 (square-ind (square-of index max-pos) max-pos)]))))))
+                                          (col-ind (col-of index max-pos) max-pos)
+                                          (square-ind (square-of index max-pos) max-pos)]))))))
 
 (defn solved?
   "Check if value of piece is known"
@@ -132,11 +124,15 @@
   ([puzzle index max-pos]
    (puzzle-pieces puzzle (neighbors-ind index max-pos))))
 
+(defn unique-values
+  [list]
+  (set (except 0 list)))
+
 (defn all-choices
   ([]
    (all-choices 81))
   ([max-pos]
-   (set (range 1 (inc (math/sqrt max-pos))))))
+   (set (range 1 (inc (row-size-m max-pos))))))
 
 (defn choices
   ([puzzle index]
@@ -163,7 +159,9 @@
 (defn valid?
   [puzzle index]
   ;; TODO
-)
+  (def value (nth puzzle index))
+  (and (not (= 0 value)) 
+       (not (contains? (unique-values (neighbors puzzle index)) value))))
 
 (defn read-puzzle
   "Transform text puzzle into an seq on integers"
@@ -194,3 +192,5 @@
 (defn puzzle-to-string
   [puzzle]
   (string/join "" puzzle))
+
+(def puzzle "100030009020640080003200740200000000014000000000062800007000300080450020000000001")
