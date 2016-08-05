@@ -18,21 +18,21 @@
 (defn row-of
   "Return row index based on piece index"
   ([index]
-   (row-of index (count puzzle)))
+   (row-of index 81))
   ([index max-pos]
    (quot index (row-size-m max-pos))))
 
 (defn col-of
   "Return column index based on piece index"
   ([index]
-   (col-of index (count puzzle)))
+   (col-of index 81))
   ([index max-pos]
    (rem index (row-size-m max-pos))))
 
 (defn square-of
   "Return square index based on piece index"
   ([index]
-   (square-of index (count puzzle)))
+   (square-of index 81))
   ([index max-pos]
    (def row (row-of index max-pos))
    (def col (col-of index max-pos))
@@ -42,7 +42,7 @@
 (defn row-ind
   "Seq of indices that are in given row"
   ([r]
-   (row-ind r (count puzzle)))
+   (row-ind r 81))
   ([r max-pos]
    (def rows (row-size-m max-pos))
    (def start (* r rows))
@@ -51,7 +51,7 @@
 (defn col-ind
   "Seq of indices that are in given column"
   ([c]
-   (col-ind c (count puzzle)))
+   (col-ind c 81))
   ([c max-pos]
    (def cols (row-size-m max-pos))
    (range c max-pos cols)))
@@ -59,7 +59,7 @@
 (defn square-ind
   "Seq of indices that are in a given square"
   ([s]
-   (square-ind s (count puzzle)))
+   (square-ind s 81))
   ([s max-pos]
    (def rows (row-size-m max-pos))
    (def grouping (group-size-m max-pos))
@@ -77,7 +77,7 @@
 (defn neighbors-ind
   "Generate indices of neighbors given piece index"
   ([index]
-   (neighbors-ind index (count puzzle)))
+   (neighbors-ind index 81))
   ([index max-pos]
    (except index (sort (set (reduce into [(row-ind (row-of index max-pos) max-pos)
                                           (col-ind (col-of index max-pos) max-pos)
@@ -149,6 +149,8 @@
                                   (map solutions (range 0 n-pieces))))
   (remove #(= nil (last %)) (sort-by #(count (last %)) possible-solutions)))
 
+(def candidate-piece #(first (candidate-pieces %)))
+
 (defn new-puzzles-from-choices
   "Generate new puzzles with guessed fields"
   [puzzle [index choices]]
@@ -157,8 +159,8 @@
 )
 
 (defn valid?
+  "Check if a given index is valid with current puzzle"
   [puzzle index]
-  ;; TODO
   (def value (nth puzzle index))
   (and (not (= 0 value)) 
        (not (contains? (unique-values (neighbors puzzle index)) value))))
@@ -168,18 +170,52 @@
   [puzzle]
   (not (some #(= 0 %) puzzle)))
 
+(defn invalid-puzzle?
+  [puzzle]
+  (= 0 (count (last (candidate-piece puzzle)))))
+
 (defn step
   [puzzle]
   (if (finished? puzzle)
     puzzle
-    (first (new-puzzles-from-choices puzzle (first (candidate-pieces puzzle))))))
+    (if (= 1 (count (last (candidate-piece puzzle))))
+      (first (new-puzzles-from-choices puzzle (candidate-piece puzzle)))
+      puzzle)))
 
-(defn solve
-  "Simple solver without backtracking"
+(defn solve-until-choice
+  "Step until guesses completed"
   [puzzle]
   (if (finished? puzzle)
     puzzle
-    (recur (step puzzle))))
+    (if (invalid-puzzle? puzzle)
+      nil
+      (recur (step puzzle)))))
+
+(defn solve-with-branching
+  "Returns series of possible solutions or nil for broken puzzle"
+  [puzzle]
+  (def stuck-puzzle (solve-until-choice puzzle))
+  (if (= nil stuck-puzzle)
+    nil
+    (if (finished? stuck-puzzle)
+      (vector stuck-puzzle)
+      (new-puzzles-from-choices stuck-puzzle (candidate-piece stuck-puzzle)))))
+
+(defn manage-branched-solutions
+  "Takes multiple puzzles and generates a list of branched solutions"
+  [puzzles]
+  (def possible-solutions (solve-with-branching (first puzzles)))
+  (if (= nil possible-solutions)
+    (rest puzzles)
+    (into possible-solutions (rest puzzles))))
+
+(defn solve
+  "Find a solution to puzzle if one exists"
+  [puzzle]
+  (loop [puzzles [puzzle]]
+    (if (finished? (first puzzles))
+      (first puzzles)
+      (recur (manage-branched-solutions puzzles)))))
 
 (defn read-puzzle
   "Transform text puzzle into an seq on integers"
@@ -213,6 +249,7 @@
 
 (def puzzle-string-81 "100030009020640080003200740200000000014000000000062800007000300080450020000000001")
 (def puzzle-string-16 "1234342121430000")
+(def puzzle-string-16-x "1234123412341230")
 
 (def puzzle (read-puzzle puzzle-string-16))
 (println "Initial:")
