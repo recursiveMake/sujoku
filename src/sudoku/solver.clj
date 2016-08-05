@@ -4,28 +4,24 @@
             [sudoku.accessors :refer :all]
             [sudoku.util :refer [unique-values]]))
 
-(defn solved?
+(defn piece-solved?
   "Check if value of piece is known"
   [puzzle index]
   (not (= 0 (nth puzzle index))))
 
-(defn all-choices
-  ([]
-   (all-choices 81))
-  ([max-pos]
-   (set (range 1 (inc (row-size-m max-pos))))))
-
 (defn choices
+  "Generate possible values for square in puzzle"
   ([puzzle index]
    (choices puzzle index (count puzzle)))
   ([puzzle index max-pos]
-   (clojure.set/difference (all-choices max-pos) (set (neighbors puzzle index max-pos)))))
+   (def all-choices (set (range 1 (inc (row-size-m max-pos)))))
+   (clojure.set/difference all-choices (set (neighbors puzzle index max-pos)))))
 
 (defn candidate-pieces
   "Generate a list of possible guesses"
   [puzzle]
   (def n-pieces (count puzzle))
-  (def solutions #(if (solved? puzzle %) nil (choices puzzle %)))
+  (def solutions #(if (piece-solved? puzzle %) nil (choices puzzle %)))
   (def possible-solutions (zipmap (range 0 n-pieces)
                                   (map solutions (range 0 n-pieces))))
   (remove #(= nil (last %)) (sort-by #(count (last %)) possible-solutions)))
@@ -39,56 +35,35 @@
   (map #(seq (assoc %1 %2 %3)) (repeat puzzle-list) (repeat index) choices)
 )
 
-(defn valid?
-  "Check if a given index is valid with current puzzle"
-  [puzzle index]
-  (def value (nth puzzle index))
-  (and (not (= 0 value)) 
-       (not (contains? (unique-values (neighbors puzzle index)) value))))
-
 (defn finished?
   "Check if all squares have been filled"
   [puzzle]
   (not (some #(= 0 %) puzzle)))
 
-(defn invalid-puzzle?
-  [puzzle]
-  (= 0 (count (last (candidate-piece puzzle)))))
+(def single-step #(first (new-puzzles-from-choices %1 %2)))
+(def multi-step new-puzzles-from-choices)
 
-(defn step
+(defn walk-solution-tree
+  "Depth first search of a puzzle
+  Returns a vector of:
+    * solution if found
+    * multiple solutions if at a branch
+    * nil if puzzle is invalid"
   [puzzle]
-  (if (finished? puzzle)
-    puzzle
-    (if (= 1 (count (last (candidate-piece puzzle))))
-      (first (new-puzzles-from-choices puzzle (candidate-piece puzzle)))
-      puzzle)))
+  (loop [new-puzzle puzzle]
+    (def possible-choice (candidate-piece new-puzzle))
+    (if (= nil possible-choice)
+      (vector new-puzzle)
+      (if (= 1 (count (last possible-choice)))
+        (recur (single-step new-puzzle possible-choice))
+        (multi-step new-puzzle possible-choice)))))
 
-(defn solve-until-choice
-  "Step until guesses completed"
-  [puzzle]
-  (if (finished? puzzle)
-    puzzle
-    (if (invalid-puzzle? puzzle)
-      nil
-      (step puzzle))))
-
-(defn solve-with-branching
-  "Returns series of possible solutions or nil for broken puzzle"
-  [puzzle]
-  (def stuck-puzzle (solve-until-choice puzzle))
-  (if (= nil stuck-puzzle)
-    nil
-    (if (finished? stuck-puzzle)
-      (vector stuck-puzzle)
-      (new-puzzles-from-choices stuck-puzzle (candidate-piece stuck-puzzle)))))
-
-(defn manage-branched-solutions
-  "Takes multiple puzzles and generates a list of branched solutions"
-  [puzzles]
-  (def possible-solutions (solve-with-branching (first puzzles)))
-  (if (= nil possible-solutions)
+(defn manage-solutions
+  "Add new puzzles to puzzles list"
+  [puzzles solutions]
+  (if (= (vector nil) solutions)
     (rest puzzles)
-    (into possible-solutions (rest puzzles))))
+    (into solutions (rest puzzles))))
 
 (defn solve
   "Find a solution to puzzle if one exists"
@@ -96,4 +71,4 @@
   (loop [puzzles [puzzle]]
     (if (finished? (first puzzles))
       (first puzzles)
-      (recur (manage-branched-solutions puzzles)))))
+      (recur (manage-solutions puzzles (walk-solution-tree (first puzzles)))))))

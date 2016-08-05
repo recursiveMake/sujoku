@@ -38,7 +38,7 @@
    (def group (group-size-m max-pos))
    (+ (* group (quot row group)) (quot col group))))
 
-(defn row-ind
+(defn row-ind-raw
   "Seq of indices that are in given row"
   ([r]
    (row-ind r 81))
@@ -46,16 +46,18 @@
    (def rows (row-size-m max-pos))
    (def start (* r rows))
    (range start (+ start rows))))
+(def row-ind (memoize row-ind-raw))
 
-(defn col-ind
+(defn col-ind-raw
   "Seq of indices that are in given column"
   ([c]
    (col-ind c 81))
   ([c max-pos]
    (def cols (row-size-m max-pos))
    (range c max-pos cols)))
+(def col-ind (memoize col-ind-raw))
 
-(defn square-ind
+(defn square-ind-raw
   "Seq of indices that are in a given square"
   ([s]
    (square-ind s 81))
@@ -67,8 +69,9 @@
    (def start (+ (* rows grouping r) (* c grouping)))
    (def first-chunk (range start (+ start grouping)))
    (sort (flatten (map #(range % (+ % (* rows grouping)) rows) first-chunk)))))
+(def square-ind (memoize square-ind-raw))
 
-(defn neighbors-ind
+(defn neighbors-ind-raw
   "Generate indices of neighbors given piece index"
   ([index]
    (neighbors-ind index 81))
@@ -76,3 +79,4 @@
    (except index (sort (set (reduce into [(row-ind (row-of index max-pos) max-pos)
                                           (col-ind (col-of index max-pos) max-pos)
                                           (square-ind (square-of index max-pos) max-pos)]))))))
+(def neighbors-ind (memoize neighbors-ind-raw))
