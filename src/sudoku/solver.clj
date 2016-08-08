@@ -1,8 +1,7 @@
 (ns sudoku.solver
   (:require [clojure.set]
             [sudoku.structure :refer :all]
-            [sudoku.accessors :refer :all]
-            [sudoku.util :refer [unique-values]]))
+            [sudoku.accessors :refer :all]))
 
 (defn piece-solved?
   "Check if value of piece is known"
