@@ -1,4 +1,4 @@
-(ns sudoku.solver
+(ns sudoku.solver.base
   (:require [clojure.set]
             [sudoku.structure :refer :all]
             [sudoku.accessors :refer :all]))
@@ -34,6 +34,11 @@
   (map #(seq (assoc %1 %2 %3)) (repeat puzzle-list) (repeat index) choices)
 )
 
+(defn percent-complete
+  "Returns a fraction of the puzzle solved"
+  [puzzle]
+  (/ (count (filter #(not (= 0 %)) puzzle)) (count puzzle)))
+
 (defn finished?
   "Check if all squares have been filled"
   [puzzle]
@@ -42,32 +47,3 @@
 (def single-step #(first (new-puzzles-from-choices %1 %2)))
 (def multi-step new-puzzles-from-choices)
 
-(defn walk-solution-tree
-  "Depth first search of a puzzle
-  Returns a vector of:
-    * solution if found
-    * multiple solutions if at a branch
-    * nil if puzzle is invalid"
-  [puzzle]
-  (loop [new-puzzle puzzle]
-    (def possible-choice (candidate-piece new-puzzle))
-    (if (= nil possible-choice)
-      (vector new-puzzle)
-      (if (= 1 (count (last possible-choice)))
-        (recur (single-step new-puzzle possible-choice))
-        (multi-step new-puzzle possible-choice)))))
-
-(defn manage-solutions
-  "Add new puzzles to puzzles list"
-  [puzzles solutions]
-  (if (= (vector nil) solutions)
-    (rest puzzles)
-    (into solutions (rest puzzles))))
-
-(defn solve
-  "Find a solution to puzzle if one exists"
-  [puzzle]
-  (loop [puzzles [puzzle]]
-    (if (finished? (first puzzles))
-      (first puzzles)
-      (recur (manage-solutions puzzles (walk-solution-tree (first puzzles)))))))

@@ -41,7 +41,7 @@
 (defn row-ind-raw
   "Seq of indices that are in given row"
   ([r]
-   (row-ind r 81))
+   (row-ind-raw r 81))
   ([r max-pos]
    (def rows (row-size-m max-pos))
    (def start (* r rows))
@@ -51,7 +51,7 @@
 (defn col-ind-raw
   "Seq of indices that are in given column"
   ([c]
-   (col-ind c 81))
+   (col-ind-raw c 81))
   ([c max-pos]
    (def cols (row-size-m max-pos))
    (range c max-pos cols)))
@@ -60,7 +60,7 @@
 (defn square-ind-raw
   "Seq of indices that are in a given square"
   ([s]
-   (square-ind s 81))
+   (square-ind-raw s 81))
   ([s max-pos]
    (def rows (row-size-m max-pos))
    (def grouping (group-size-m max-pos))
@@ -74,7 +74,7 @@
 (defn neighbors-ind-raw
   "Generate indices of neighbors given piece index"
   ([index]
-   (neighbors-ind index 81))
+   (neighbors-ind-raw index 81))
   ([index max-pos]
    (except index (sort (set (reduce into [(row-ind (row-of index max-pos) max-pos)
                                           (col-ind (col-of index max-pos) max-pos)
