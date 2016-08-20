@@ -6,6 +6,7 @@
   :dependencies [
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/math.numeric-tower "0.0.4"]
+                 [org.clojure/tools.logging "0.3.1"]
                  ]
   :main ^:skip-aot sudoku.core
   :target-path "target/%s"

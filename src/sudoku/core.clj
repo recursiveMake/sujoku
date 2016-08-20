@@ -1,6 +1,7 @@
 (ns sudoku.core
   (:require [sudoku.io :refer [read-puzzle print-puzzle]]
-            [sudoku.solver.serial :refer [solve]])
+            [sudoku.solver.parallel :refer [solve] :rename {solve parallel-solve}]
+            [sudoku.solver.serial :refer [solve] :rename {solve serial-solve}])
   (:gen-class))
 
 

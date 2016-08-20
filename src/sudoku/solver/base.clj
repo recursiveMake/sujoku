@@ -47,3 +47,17 @@
 (def single-step #(first (new-puzzles-from-choices %1 %2)))
 (def multi-step new-puzzles-from-choices)
 
+(defn walk-solution-tree
+  "Depth first search of a puzzle
+  Returns a vector of:
+    * solution if found
+    * multiple solutions if at a branch
+    * nil if puzzle is invalid"
+  [puzzle]
+  (loop [new-puzzle puzzle]
+    (def possible-choice (candidate-piece new-puzzle))
+    (if (= nil possible-choice)
+      (vector new-puzzle)
+      (if (= 1 (count (last possible-choice)))
+        (recur (single-step new-puzzle possible-choice))
+        (multi-step new-puzzle possible-choice)))))
