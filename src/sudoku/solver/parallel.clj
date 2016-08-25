@@ -28,3 +28,69 @@
        (if (finished? (first all-solutions))
          (first all-solutions)
          (recur all-solutions))))))
+
+;; From http://stackoverflow.com/a/22409846
+(defn swap*!
+  "Like swap! but returns a vector of [old-value new-value]"
+  [atom f & args]
+  (loop [] 
+    (let [ov @atom 
+          nv (apply f ov args)]
+      (if (compare-and-set! atom ov nv)
+        [ov nv]
+        (recur)))))
+
+(defn atomic-first [atom]
+  (let [[ov nv] (swap*! atom subvec 1)]
+    (first ov)))
+
+; loop
+;  -> atomic-pop puzzles
+;   = puzzle
+;  -> do-solve puzzle
+;   = solutions
+;  -> sort-solutions solutions
+;    --> finished?
+;       --> deliver first solutions
+;       --> strip-nils solutions
+;          --> swap! puzzles solutions
+;  -> realized? solution
+;    --> recur puzzles
+
+(defn start-solution-thread
+  [
+   puzzles  ; atomic list of possible puzzles
+   solution ; unrealized promise of a solution
+   ]
+  (loop []
+    (log/info "Recurring solution thread")
+    (if (not (realized? solution))
+      (let [current-puzzle (atomic-first puzzles)]
+        (log/info "Working on" current-puzzle "...")
+        (if (= nil current-puzzle)
+          (recur)
+          (let [solutions (walk-solution-tree current-puzzle)]
+            (log/info "Found" (count solutions) "new solutions")
+            (if (= nil solutions)
+              (recur)
+              (if (finished? (first solutions))
+                (deliver solution (first solutions))
+                (do (swap! puzzles into solutions)
+                    (recur))))))))))
+
+(defn free-solve
+  "Find a solution to puzzle (multithreaded)
+  No syncing
+  No sorting of solutions
+  Continues in multiple threads"
+  [puzzle]
+  (let [
+        concurrency 3            ; number of threads to start
+        solution (promise)       ; placeholder for solution
+        puzzles (atom [puzzle])  ; atomic list of puzzles to be solved
+        ]
+    (doall (map #(future (start-solution-thread %1 %2))
+                (repeat concurrency puzzles)
+                (repeat concurrency solution)))
+    (log/info "Waiting for solutions on" concurrency "threads")
+    (deref solution)))
