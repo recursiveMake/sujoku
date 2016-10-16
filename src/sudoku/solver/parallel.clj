@@ -1,6 +1,6 @@
 (ns sudoku.solver.parallel
   (:require [sudoku.solver.base :refer :all]
-            [sudoku.util :refer [except]]
+            [sudoku.util :refer [except atomic-first atomic-push]]
             [clojure.tools.logging :as log]))
 
 (defn solve
@@ -23,28 +23,6 @@
        (if (finished? (first all-solutions))
          (first all-solutions)
          (recur all-solutions))))))
-
-;; From http://stackoverflow.com/a/22409846
-(defn swap*!
-  "Like swap! but returns a vector of [old-value new-value]"
-  [atom f & args]
-  (loop [] 
-    (let [ov @atom 
-          nv (apply f ov args)]
-      (if (compare-and-set! atom ov nv)
-        [ov nv]
-        (recur)))))
-
-(defn atomic-first
-  [atom]
-  (let [[ov nv] (swap*! atom subvec 1)]
-    (first ov)))
-
-(defn atomic-push
-  "Add new puzzles to list (non-blocking)"
-  [puzzles solutions]
-  (if (not (= 0 (count solutions)))
-    (future (swap! puzzles into solutions))))
 
 (defn start-solution-loop
   "Depth first search for a solution
